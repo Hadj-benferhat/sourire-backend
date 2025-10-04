@@ -11,14 +11,61 @@ const cors = require('cors');
 const xss = require('xss-clean');
 const rateLimiter = require('express-rate-limit');
 
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 
 
+//cloudinary config
 const cloudinary = require('cloudinary').v2;
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Your API Documentation',
+      version: '1.0.0',
+      description: 'API documentation for your Express application',
+      contact: {
+        name: 'Your Organization',
+        email: 'contact@yourorg.com'
+      },
+    },
+    servers: [
+      {
+        url: 'http://localhost:3000',
+        description: 'Development server',
+      },
+      {
+        url: 'https://your-production-url.com',
+        description: 'Production server',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'token'
+        }
+      },
+    },
+  },
+  apis: ['./routes/*.js', './app.js'],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 //connectDB
 const  connectDB = require("./db/connect")
@@ -67,7 +114,7 @@ app.use(helmet());
 app.use(cors());
 app.use(xss());
 
-// CODEA JOUTÉE REMLI
+
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
@@ -96,6 +143,13 @@ app.use("/api/v1/sponsor",sponsorRouter);
 app.use("/api/v1/sponsorWaitList",sponsorWaitListRouter);
 app.use("/api/v1/comment",commentRouter); 
 app.use("/api/v1/data",dataRouter);
+
+// Swagger documentation routes
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
